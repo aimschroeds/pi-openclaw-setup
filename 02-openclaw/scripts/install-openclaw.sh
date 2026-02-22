@@ -166,22 +166,23 @@ if command -v gemini &>/dev/null; then
     warn "Gemini CLI already installed — skipping install."
 else
     info "Installing Gemini CLI..."
-    npm install -g @anthropic-ai/gemini-cli
+    npm install -g @google/gemini-cli
 fi
 
-# Check if auth token exists (gemini stores it in ~/.config/gemini/)
-if [[ -d "$HOME/.config/gemini" ]] && ls "$HOME/.config/gemini"/*token* &>/dev/null 2>&1; then
-    info "Gemini CLI auth token found — skipping auth."
+# Check if auth credentials exist (gemini caches credentials locally)
+if [[ -d "$HOME/.config/gemini" ]] && find "$HOME/.config/gemini" -type f 2>/dev/null | grep -q .; then
+    info "Gemini CLI config found — you may already be authenticated."
 else
     echo ""
     info "You need to authenticate the Gemini CLI."
+    info "Run 'gemini' and select 'Login with Google' when prompted."
     info "This will open a browser (or print a URL to visit) for Google OAuth."
     echo ""
-    read -rp "Run 'gemini auth login' now? [Y/n] " gemini_auth_confirm
+    read -rp "Run 'gemini' now to authenticate? [Y/n] " gemini_auth_confirm
     if [[ ! "$gemini_auth_confirm" =~ ^[Nn]$ ]]; then
-        gemini auth login
+        gemini
     else
-        warn "Skipped Gemini auth — run 'gemini auth login' before starting the agent."
+        warn "Skipped Gemini auth — run 'gemini' and authenticate before starting the agent."
     fi
 fi
 
