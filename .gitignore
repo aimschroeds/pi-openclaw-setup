@@ -1,0 +1,10 @@
+temp-for-terminal.sh
+*.img
+*.img.xz
+*.dmg
+.env
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+.claude/
