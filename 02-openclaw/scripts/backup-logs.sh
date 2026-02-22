@@ -89,6 +89,7 @@ rsync -az \
     --exclude='node_modules/' \
     --exclude='*.sock' \
     --exclude='*.pid' \
+    --exclude='.config/op/' \
     "$PI_USER@$PI_HOST:$REMOTE_PATH" \
     "$LOCAL_DIR/"
 

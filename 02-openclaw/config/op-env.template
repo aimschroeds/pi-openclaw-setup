@@ -1,0 +1,23 @@
+# 1Password secret references for OpenClaw
+#
+# This file maps environment variables to 1Password items using op:// URIs.
+# Copy to ~/.config/op/env on the Pi and uncomment the lines you need.
+#
+# Format: VAR_NAME=op://<vault>/<item>/<field>
+#
+# Two vaults:
+#   openclaw_read  — credentials YOU set up (API keys, tokens)
+#   openclaw_write — items the BOT manages (it can store/retrieve)
+#
+# The systemd service uses `op run --env-file` to resolve these at startup.
+# Secrets are injected into the process environment — never written to disk.
+
+# ── Required ─────────────────────────────────────────────────────────
+ANTHROPIC_API_KEY=op://openclaw_read/anthropic-api-key/credential
+
+# ── Optional — uncomment as you add services ─────────────────────────
+# BRAVE_API_KEY=op://openclaw_read/brave-search/credential
+# TWILIO_ACCOUNT_SID=op://openclaw_read/twilio/account-sid
+# TWILIO_AUTH_TOKEN=op://openclaw_read/twilio/auth-token
+# TELEGRAM_BOT_TOKEN=op://openclaw_read/telegram-bot/token
+# OPENAI_API_KEY=op://openclaw_read/openai-api-key/credential

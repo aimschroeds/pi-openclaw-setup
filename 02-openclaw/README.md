@@ -248,6 +248,55 @@ This triggers the onboarding conversation where the agent fills in IDENTITY.md a
 
 ---
 
+## Phase 2.5: 1Password Setup
+
+Secrets (API keys, tokens) are managed via 1Password so they're **never stored on disk in plaintext**. The setup uses two vaults:
+
+| Vault | Purpose | Who manages it |
+|---|---|---|
+| `openclaw_read` | Credentials you set up (Anthropic key, Twilio, Brave, etc.) | You |
+| `openclaw_write` | Items the bot creates/manages on its own | The agent |
+
+### How It Works
+
+1. A **1Password service account token** is stored at `~/.config/op/service-account-token` on the Pi (the only secret on disk)
+2. An **env file** at `~/.config/op/env` maps environment variables to `op://` URIs (e.g., `ANTHROPIC_API_KEY=op://openclaw_read/anthropic-api-key/credential`)
+3. The systemd service wraps `ExecStart` with **`op run --env-file`**, which resolves the `op://` references at startup and injects real values into the process environment
+4. Secrets exist only in memory while the service runs — they're never written to config files
+
+### Setup
+
+The `install-openclaw.sh` script handles this automatically (Step 2.5). It:
+- Installs the `op` CLI via the official apt repo
+- Prompts for your service account token
+- Copies `config/op-env.template` to `~/.config/op/env`
+- Creates a systemd override that uses `op run` for secret injection
+
+To set up manually or after install:
+
+```bash
+# 1. Create a service account at https://my.1password.com → Developer → Service Accounts
+#    Grant it read access to openclaw_read vault and read+write to openclaw_write vault
+
+# 2. Store the token on the Pi
+mkdir -p ~/.config/op
+echo "YOUR_TOKEN_HERE" > ~/.config/op/service-account-token
+chmod 600 ~/.config/op/service-account-token
+
+# 3. Copy and edit the env template
+cp config/op-env.template ~/.config/op/env
+nano ~/.config/op/env  # uncomment the secrets you need
+
+# 4. Restart the service (the systemd override picks up the new env)
+systemctl --user restart openclaw
+```
+
+### Template
+
+See `config/op-env.template` for the full list of supported secret references.
+
+---
+
 ## Phase 3: Connect Sandboxed Channels
 
 Only connect the burner accounts from Phase 0.
@@ -397,14 +446,33 @@ Run from your laptop. Multiple escalation levels:
 
 ### 6.5 — Weekly Review Routine
 
+Run the automated review script from your laptop:
+
+```bash
+# Full review (syncs logs, checks config drift, audits 1P vault, checks Pi health)
+./scripts/weekly-review.sh
+
+# Skip log sync if you just ran backup-logs.sh
+./scripts/weekly-review.sh --skip-sync
 ```
-[ ] Run ./scripts/backup-logs.sh and review what the agent did
-[ ] Review Privacy.com transaction history
-[ ] Review Twilio usage log
-[ ] Check for OpenClaw updates / security advisories
-[ ] Rotate API keys if anything looks off
-[ ] Check SOUL.md and MEMORY.md for unexpected changes
+
+The script automates what it can and prints reminders for the rest:
+
 ```
+Automated:
+  ✓ Sync logs from Pi
+  ✓ Diff SOUL.md, MEMORY.md, AGENTS.md, TOOLS.md against last backup
+  ✓ List items in the 1Password read-write vault (what the bot stored)
+  ✓ Check service status, disk usage, CPU temp on the Pi
+
+Manual (script prints reminders):
+  [ ] Review Privacy.com transaction history
+  [ ] Review Twilio usage and charges
+  [ ] Check for OpenClaw updates / security advisories
+  [ ] Rotate API keys if anything looks off
+```
+
+Configure with env vars: `CLAWPI_HOST`, `CLAWPI_USER`, `CLAWPI_LOG_DIR`, `CLAWPI_SSH_PORT`, `CLAWPI_OP_RW_VAULT`.
 
 ---
 
@@ -456,12 +524,14 @@ openclaw-pi-sandbox/
 │   ├── HEARTBEAT.md         ← proactive check list (→ workspace)
 │   ├── AGENTS.md            ← operating contract and safety rules (→ workspace)
 │   ├── USER.md              ← about you — fill in your details (→ workspace)
-│   └── TOOLS.md             ← enabled/disabled tools and rate limits (→ workspace)
+│   ├── TOOLS.md             ← enabled/disabled tools and rate limits (→ workspace)
+│   └── op-env.template      ← 1Password op:// secret references (→ ~/.config/op/env)
 ├── scripts/
 │   ├── harden-pi.sh         ← OS hardening (run as pi user)
-│   ├── install-openclaw.sh  ← OpenClaw install + config copy (run as openclaw user)
+│   ├── install-openclaw.sh  ← OpenClaw install + 1P setup + config copy (run as openclaw user)
 │   ├── backup-logs.sh       ← sync logs to your laptop (run on laptop)
-│   └── kill-agent.sh        ← emergency stop (run on laptop)
+│   ├── kill-agent.sh        ← emergency stop (run on laptop)
+│   └── weekly-review.sh     ← automated weekly review (run on laptop)
 └── docs/
     └── account-setup.md     ← detailed account creation walkthrough (TODO)
 ```
@@ -486,4 +556,9 @@ All config files in `config/` are templates. `install-openclaw.sh` copies them i
 [ ] Log sync running
 [ ] Kill switch tested and working
 [ ] Automatic OS security updates enabled
+[ ] 1Password service account token stored with mode 600
+[ ] op:// env file has only the secrets the agent needs
+[ ] Service account has minimal vault permissions (read-only where possible)
+[ ] ~/.config/op/ excluded from log backups (confirmed in rsync)
+[ ] 1P read-write vault reviewed weekly (run weekly-review.sh)
 ```
