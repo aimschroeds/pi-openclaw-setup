@@ -13,7 +13,7 @@
 # Secrets are injected into the process environment — never written to disk.
 #
 # NOTE: If using google-gemini-cli as your LLM provider (recommended),
-# no LLM API key is needed here — Gemini CLI uses OAuth (run `gemini auth login`).
+# no LLM API key is needed here — Gemini CLI uses OAuth (run `gemini` to authenticate).
 # The Required section below is empty unless you use an API-key-based LLM provider.
 
 # ── Required ─────────────────────────────────────────────────────────

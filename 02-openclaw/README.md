@@ -216,7 +216,7 @@ scp -r scripts/ config/ openclaw@clawpi.local:~/openclaw-pi-sandbox/
 ssh openclaw@clawpi.local '~/openclaw-pi-sandbox/scripts/install-openclaw.sh'
 ```
 
-The script handles: nvm + Node.js 22, OpenClaw install, Gemini CLI setup (`gemini auth login` for OAuth), interactive onboarding wizard, security defaults (loopback binding), copying config templates (SOUL.md, HEARTBEAT.md, etc.), and systemd service setup.
+The script handles: nvm + Node.js 22, OpenClaw install, Gemini CLI setup (`gemini` for OAuth), interactive onboarding wizard, security defaults (loopback binding), copying config templates (SOUL.md, HEARTBEAT.md, etc.), and systemd service setup.
 
 ### What the Script Does (Manual Reference)
 
@@ -225,7 +225,7 @@ The script handles: nvm + Node.js 22, OpenClaw install, Gemini CLI setup (`gemin
 3. **Runs `openclaw onboard`** — interactive wizard where you:
    - Bind gateway to `127.0.0.1:18789` (loopback only!)
    - Create workspace at `~/.openclaw/`
-   - Select `google-gemini-cli` as LLM provider (uses OAuth — no API key needed; run `gemini auth login` first)
+   - Select `google-gemini-cli` as LLM provider (uses OAuth — no API key needed; run `gemini` first)
    - Skip channels for now (we add them in Phase 3)
 4. **Enforces loopback binding** — if the gateway is bound to 0.0.0.0, the script fixes it
 5. **Copies config templates** from `config/` into the workspace (SOUL.md, HEARTBEAT.md, AGENTS.md, USER.md, TOOLS.md)
