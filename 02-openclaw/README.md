@@ -216,7 +216,7 @@ scp -r scripts/ config/ openclaw@clawpi.local:~/openclaw-pi-sandbox/
 ssh openclaw@clawpi.local '~/openclaw-pi-sandbox/scripts/install-openclaw.sh'
 ```
 
-The script handles: nvm + Node.js 22, OpenClaw install, interactive onboarding wizard, security defaults (loopback binding), copying config templates (SOUL.md, HEARTBEAT.md, etc.), and systemd service setup.
+The script handles: nvm + Node.js 22, OpenClaw install, Gemini CLI setup (`gemini auth login` for OAuth), interactive onboarding wizard, security defaults (loopback binding), copying config templates (SOUL.md, HEARTBEAT.md, etc.), and systemd service setup.
 
 ### What the Script Does (Manual Reference)
 
@@ -225,7 +225,7 @@ The script handles: nvm + Node.js 22, OpenClaw install, interactive onboarding w
 3. **Runs `openclaw onboard`** — interactive wizard where you:
    - Bind gateway to `127.0.0.1:18789` (loopback only!)
    - Create workspace at `~/.openclaw/`
-   - Enter your LLM provider API key (Anthropic/OpenAI)
+   - Select `google-gemini-cli` as LLM provider (uses OAuth — no API key needed; run `gemini auth login` first)
    - Skip channels for now (we add them in Phase 3)
 4. **Enforces loopback binding** — if the gateway is bound to 0.0.0.0, the script fixes it
 5. **Copies config templates** from `config/` into the workspace (SOUL.md, HEARTBEAT.md, AGENTS.md, USER.md, TOOLS.md)
@@ -260,7 +260,7 @@ Secrets (API keys, tokens) are managed via 1Password so they're **never stored o
 ### How It Works
 
 1. A **1Password service account token** is stored at `~/.config/op/service-account-token` on the Pi (the only secret on disk)
-2. An **env file** at `~/.config/op/env` maps environment variables to `op://` URIs (e.g., `ANTHROPIC_API_KEY=op://openclaw_read/anthropic-api-key/credential`)
+2. An **env file** at `~/.config/op/env` maps environment variables to `op://` URIs (e.g., `BRAVE_API_KEY=op://openclaw_read/brave-search/credential`)
 3. The systemd service wraps `ExecStart` with **`op run --env-file`**, which resolves the `op://` references at startup and injects real values into the process environment
 4. Secrets exist only in memory while the service runs — they're never written to config files
 
@@ -503,12 +503,14 @@ Start small. Don't enable everything at once.
 
 | Item | Monthly cost |
 |---|---|
-| LLM API (Anthropic/OpenAI) | $20–60 depending on usage |
+| Google AI subscription (Gemini) | $20/mo flat* |
 | Twilio (SMS/Voice) | ~$5–15 |
 | Privacy.com | Free (capped at $50 spend) |
 | Prepaid SIM (optional) | $15–30 |
 | ProtonMail | Free |
-| **Total** | **~$40–105/mo** (plus whatever you let the agent spend) |
+| **Total** | **~$40–65/mo** (plus whatever you let the agent spend) |
+
+*Using `google-gemini-cli` with a $20/mo Google AI subscription (flat rate, no per-token billing). Alternatively, use Anthropic or OpenAI API keys ($20–60/mo depending on usage).
 
 The Pi itself costs nothing to run (< $5/year electricity).
 
