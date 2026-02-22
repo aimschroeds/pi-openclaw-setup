@@ -20,7 +20,8 @@
 - Auth profiles: `~/.openclaw/agents/main/agent/auth-profiles.json`
 - Auth config: `~/.openclaw/agents/main/agent/auth.json`
 - Workspace configs: `~/.openclaw/workspaces/` (SOUL.md, HEARTBEAT.md, TOOLS.md, USER.md)
-- Primary model: `google-gemini-cli/gemini-3-flash-preview`
+- Primary model: `anthropic/claude-sonnet-4-6`
+- Fallback model: `google/gemini-2.5-pro`
 
 ## References
 

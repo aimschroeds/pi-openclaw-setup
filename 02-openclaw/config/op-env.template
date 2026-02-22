@@ -11,16 +11,11 @@
 #
 # The systemd service uses `op run --env-file` to resolve these at startup.
 # Secrets are injected into the process environment — never written to disk.
-#
-# NOTE: If using google-gemini-cli as your LLM provider (recommended),
-# no LLM API key is needed here — Gemini CLI uses OAuth (run `gemini auth login`).
-# The Required section below is empty unless you use an API-key-based LLM provider.
 
 # ── Required ─────────────────────────────────────────────────────────
-# (empty — google-gemini-cli uses OAuth, not an API key)
+ANTHROPIC_API_KEY=op://openclaw_read/anthropic-api-key/credential
 
 # ── Optional — uncomment as you add services ─────────────────────────
-# ANTHROPIC_API_KEY=op://openclaw_read/anthropic-api-key/credential
 # BRAVE_API_KEY=op://openclaw_read/brave-search/credential
 # TWILIO_ACCOUNT_SID=op://openclaw_read/twilio/account-sid
 # TWILIO_AUTH_TOKEN=op://openclaw_read/twilio/auth-token

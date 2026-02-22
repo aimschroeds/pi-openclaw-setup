@@ -31,17 +31,17 @@ Run an autonomous AI agent (OpenClaw) on a dedicated Raspberry Pi — with sandb
 - Raspberry Pi (any model with networking; tested on Pi 5)
 - microSD card (16 GB+)
 - Another computer on the same network (macOS or Linux)
-- Google AI subscription ($20/mo) — or Anthropic/OpenAI API key
+- Anthropic or OpenAI API key
 
 ## Cost Estimate
 
 | Item | Monthly |
 |---|---|
-| Google AI subscription | $20/mo flat |
+| LLM API | $20–60 |
 | Twilio (SMS/Voice) | ~$5–15 |
 | Privacy.com | Free |
 | Prepaid SIM (optional) | $15–30 |
 | ProtonMail | Free |
-| **Total** | **~$40–65/mo** |
+| **Total** | **~$40–105/mo** |
 
 The Pi itself costs < $5/year in electricity.
