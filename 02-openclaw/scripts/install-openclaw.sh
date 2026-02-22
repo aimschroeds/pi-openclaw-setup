@@ -7,10 +7,11 @@
 # It will:
 #   1. Install Node.js 22 via nvm
 #   2. Install OpenClaw globally
+#   2.5. Install 1Password CLI and configure service account token
 #   3. Run onboarding (interactive — you enter API keys etc.)
 #   4. Apply secure defaults (loopback binding, no auto-install)
 #   5. Copy config templates (SOUL.md, HEARTBEAT.md, etc.)
-#   6. Install as a systemd user service (auto-starts on boot)
+#   6. Install as a systemd user service (with op run for secret injection)
 #
 # Usage:
 #   ssh openclaw@clawpi.local
@@ -92,6 +93,68 @@ else
 fi
 info "OpenClaw version: $(openclaw --version 2>/dev/null || echo 'installed')"
 
+# ── Step 2.5: 1Password CLI setup ─────────────────────────────────
+echo ""
+read -rp "Set up 1Password CLI for secret injection? [Y/n] " op_confirm
+if [[ ! "$op_confirm" =~ ^[Nn]$ ]]; then
+    if command -v op &>/dev/null; then
+        warn "1Password CLI already installed — skipping install."
+    else
+        info "Installing 1Password CLI..."
+        # Add the 1Password apt repository and install
+        curl -sS https://downloads.1password.com/linux/keys/1password.asc \
+            | sudo gpg --dearmor --output /usr/share/keyrings/1password-archive-keyring.gpg
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/$(dpkg --print-architecture) stable main" \
+            | sudo tee /etc/apt/sources.list.d/1password-cli.list
+        sudo apt-get update -qq && sudo apt-get install -y 1password-cli
+        info "1Password CLI version: $(op --version)"
+    fi
+
+    # Prompt for service account token
+    echo ""
+    echo "A 1Password service account token lets the agent fetch secrets at runtime."
+    echo "Create one at: https://my.1password.com → Developer → Service Accounts"
+    echo ""
+    read -rsp "Paste your 1Password service account token (input hidden): " OP_TOKEN
+    echo ""
+
+    if [[ -z "$OP_TOKEN" ]]; then
+        warn "No token provided — skipping 1Password configuration."
+        warn "You can set it up later at ~/.config/op/service-account-token"
+    else
+        # Store the token securely
+        mkdir -p "$HOME/.config/op"
+        echo "$OP_TOKEN" > "$HOME/.config/op/service-account-token"
+        chmod 600 "$HOME/.config/op/service-account-token"
+        info "Token stored at ~/.config/op/service-account-token (mode 600)"
+
+        # Validate the token
+        info "Validating token..."
+        if OP_SERVICE_ACCOUNT_TOKEN="$OP_TOKEN" op vault list --format=json &>/dev/null; then
+            info "Token is valid. Available vaults:"
+            OP_SERVICE_ACCOUNT_TOKEN="$OP_TOKEN" op vault list
+        else
+            warn "Token validation failed. Check that the token is correct and the service account has vault access."
+            warn "You can re-run this step later or edit ~/.config/op/service-account-token"
+        fi
+
+        # Copy the op:// env template
+        OP_ENV_DEST="$HOME/.config/op/env"
+        if [[ -f "$CONFIG_DIR/op-env.template" ]]; then
+            if [[ -f "$OP_ENV_DEST" ]]; then
+                warn "$OP_ENV_DEST already exists — not overwriting."
+            else
+                cp "$CONFIG_DIR/op-env.template" "$OP_ENV_DEST"
+                chmod 600 "$OP_ENV_DEST"
+                info "Copied op-env.template → $OP_ENV_DEST"
+                info "Edit $OP_ENV_DEST to uncomment the secrets your agent needs."
+            fi
+        else
+            warn "op-env.template not found in config/ — create $OP_ENV_DEST manually."
+        fi
+    fi
+fi
+
 # ── Step 3: Run onboarding ────────────────────────────────────────
 echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
@@ -171,6 +234,44 @@ if [[ ! "$daemon_confirm" =~ ^[Nn]$ ]]; then
     sudo loginctl enable-linger "$(whoami)" 2>/dev/null || true
 
     openclaw onboard --install-daemon
+
+    # If 1Password is configured, add a systemd override to inject secrets via op run
+    TOKEN_FILE="$HOME/.config/op/service-account-token"
+    OP_ENV_FILE="$HOME/.config/op/env"
+    if [[ -f "$TOKEN_FILE" && -f "$OP_ENV_FILE" ]]; then
+        info "Setting up systemd override for 1Password secret injection..."
+
+        OVERRIDE_DIR="$HOME/.config/systemd/user/openclaw-gateway.service.d"
+        mkdir -p "$OVERRIDE_DIR"
+
+        # Read the existing ExecStart so we can wrap it with op run
+        EXISTING_EXEC=$(systemctl --user show openclaw-gateway.service -p ExecStart --value 2>/dev/null || \
+                        systemctl --user show openclaw.service -p ExecStart --value 2>/dev/null || echo "")
+
+        # Determine the actual service unit name
+        SERVICE_NAME="openclaw-gateway.service"
+        if ! systemctl --user cat "$SERVICE_NAME" &>/dev/null; then
+            SERVICE_NAME="openclaw.service"
+            OVERRIDE_DIR="$HOME/.config/systemd/user/openclaw.service.d"
+            mkdir -p "$OVERRIDE_DIR"
+        fi
+
+        cat > "$OVERRIDE_DIR/op.conf" <<OVERRIDE
+[Service]
+# 1Password secret injection
+# Reads the service account token from file, then uses op run to resolve
+# op:// references in the env file into real values at startup.
+ExecStart=
+ExecStart=/bin/bash -c 'export OP_SERVICE_ACCOUNT_TOKEN=\$(cat %h/.config/op/service-account-token) && exec op run --env-file=%h/.config/op/env -- $EXISTING_EXEC'
+OVERRIDE
+
+        systemctl --user daemon-reload
+        info "Systemd override created at $OVERRIDE_DIR/op.conf"
+        info "Secrets from op:// references will be injected at service start."
+    else
+        info "1Password not configured — service will use env vars directly."
+        info "To add 1P later, re-run install or set up the override manually."
+    fi
 
     info "Systemd service installed."
     info "Check status: systemctl --user status openclaw"
