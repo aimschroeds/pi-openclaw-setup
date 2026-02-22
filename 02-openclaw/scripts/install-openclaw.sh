@@ -155,6 +155,37 @@ if [[ ! "$op_confirm" =~ ^[Nn]$ ]]; then
     fi
 fi
 
+# ── Step 2.7: Gemini CLI setup (OAuth for LLM) ───────────────────
+echo ""
+info "Setting up Gemini CLI for LLM access..."
+info "Google Gemini CLI uses OAuth tied to a \$20/mo Google AI subscription"
+info "(flat rate — no per-token billing). The token lasts ~1 year."
+echo ""
+
+if command -v gemini &>/dev/null; then
+    warn "Gemini CLI already installed — skipping install."
+else
+    info "Installing Gemini CLI..."
+    npm install -g @google/gemini-cli
+fi
+
+# Check if auth credentials exist (gemini caches credentials locally)
+if [[ -d "$HOME/.config/gemini" ]] && find "$HOME/.config/gemini" -type f 2>/dev/null | grep -q .; then
+    info "Gemini CLI config found — you may already be authenticated."
+else
+    echo ""
+    info "You need to authenticate the Gemini CLI."
+    info "Run 'gemini' and select 'Login with Google' when prompted."
+    info "This will open a browser (or print a URL to visit) for Google OAuth."
+    echo ""
+    read -rp "Run 'gemini' now to authenticate? [Y/n] " gemini_auth_confirm
+    if [[ ! "$gemini_auth_confirm" =~ ^[Nn]$ ]]; then
+        gemini
+    else
+        warn "Skipped Gemini auth — run 'gemini' and authenticate before starting the agent."
+    fi
+fi
+
 # ── Step 3: Run onboarding ────────────────────────────────────────
 echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
@@ -163,7 +194,8 @@ echo "║                                                          ║"
 echo "║  Key settings to choose:                                 ║"
 echo "║    • Gateway host: 127.0.0.1 (loopback only!)          ║"
 echo "║    • Gateway port: 18789 (default)                      ║"
-echo "║    • LLM provider: your choice (have API key ready)     ║"
+echo "║    • LLM provider: select google-gemini-cli             ║"
+echo "║      (uses OAuth — no API key needed)                    ║"
 echo "║    • Channels: skip for now — we add them later         ║"
 echo "╚══════════════════════════════════════════════════════════╝"
 echo ""
